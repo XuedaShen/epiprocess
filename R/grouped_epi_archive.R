@@ -186,7 +186,7 @@ grouped_epi_archive =
 #'   object. See the documentation for the wrapper function [`epix_slide()`] for
 #'   details.
 #' @importFrom data.table key address
-#' @importFrom rlang !! !!! enquo quo_is_missing enquos is_quosure sym syms as_data_mask
+#' @importFrom rlang !! !!! enquo quo_is_missing enquos is_quosure sym syms
           slide = function(f, ..., before, ref_time_values,
                            time_step, new_col_name = "slide_value",
                            as_list_col = FALSE, names_sep = "_",
@@ -437,12 +437,7 @@ grouped_epi_archive =
               }
               
               quo = quos[[1]]
-              f = function(x, group_key, ref_time_value, quo, ...) {
-                mask = as_data_mask(x)
-                mask$.env = as_data_pronoun(list(group_key = group_key, ref_time_value = ref_time_value))
-                rlang::eval_tidy(quo, data = mask)
-              }
-
+              f = function(x, quo, ...) rlang::eval_tidy(quo, x)
               new_col = sym(names(rlang::quos_auto_name(quos)))
 
               x = purrr::map_dfr(ref_time_values, function(ref_time_value) {
