@@ -438,8 +438,12 @@ grouped_epi_archive =
               
               quo = quos[[1]]
               f = function(x, group_key, ref_time_value, quo, ...) {
-                quo = quo_set_env(quo, env(group_key = group_key, ref_time_value = ref_time_value))
-                rlang::eval_tidy(quo, x)
+                browser()
+                by <- dplyr:::compute_by(sym(private$vars), x, by_arg = ".by", data_arg = ".data")
+                error_call <- dplyr:::dplyr_error_call(error_call)
+                # mask <- new_data_mask(dplyr:::DataMask$new(x, by, "summarise", error_call = error_call))
+                mask <- dplyr:::DataMask$new(x, by, "summarise", error_call = error_call)
+                rlang::eval_tidy(quo, data = x, env = mask)
               }
               new_col = sym(names(rlang::quos_auto_name(quos)))
 
@@ -574,4 +578,8 @@ group_by_drop_default.grouped_epi_archive = function(.tbl) {
 epix_truncate_versions_after.grouped_epi_archive = function(x, max_version) {
   return ((x$clone()$truncate_versions_after(max_version)))
   # ^ second set of parens drops invisibility
+}
+
+context_poke = function(...) {
+  dplyr:::context_poke(...)
 }
