@@ -387,7 +387,7 @@ epi_slide = function(x, f, ..., before, after, ref_time_values,
     }
     
     quo = quos[[1]]
-    f = function(.x, .group_key, quo, ...) {
+    f = function(.x, .group_key, ...) {
       .ref_time_value = min(.x$time_value) + before
       .x <- .x[.x$.real,]
       .x$.real <- NULL
@@ -408,7 +408,7 @@ epi_slide = function(x, f, ..., before, after, ref_time_values,
     
     x = x %>%  
       group_modify(slide_one_grp,
-                   f = f, quo = quo,
+                   f = f,
                    starts = starts,
                    stops = stops,
                    time_values = ref_time_values, 

@@ -370,7 +370,7 @@ grouped_epi_archive =
               }
               
               quo = quos[[1]]
-              f = function(.x, .group_key, .ref_time_value, quo, ...) {
+              f = function(.x, .group_key, .ref_time_value, ...) {
                 # Convert to environment to standardize between tibble and R6
                 # based inputs. In both cases, we should get a simple
                 # environment with the empty environment as its parent.
@@ -427,7 +427,7 @@ grouped_epi_archive =
                     data.table::setDT(.data_group, key=dt_key)
                     .data_group_archive = as_of_archive$clone()
                     .data_group_archive$DT = .data_group
-                    comp_one_grp(.data_group_archive, .group_key, f = f, quo = quo,
+                    comp_one_grp(.data_group_archive, .group_key, f = f,
                                  ref_time_value = ref_time_value,
                                  new_col = new_col
                     )
@@ -438,7 +438,7 @@ grouped_epi_archive =
                   dplyr::group_by(as_of_df, dplyr::across(tidyselect::all_of(private$vars)),
                                   .drop=private$drop) %>%
                     dplyr::group_modify(group_modify_fn,
-                                        f = f, quo = quo,
+                                        f = f,
                                         ref_time_value = ref_time_value,
                                         comp_effective_key_vars = comp_effective_key_vars,
                                         new_col = new_col,
