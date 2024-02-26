@@ -74,8 +74,50 @@
 #'   the missing marker is a `NULL` entry in the list column; for certain
 #'   operations, you might want to replace these `NULL` entries with a different
 #'   `NA` marker.
+#' @param incomplete_results How should computation results calculated on
+#'  incomplete windows be handled? Incomplete windows are defined as those
+#'  where any values are explicitly missing (have a value of `NA`); `NA`s
+#'  that exist in the input data can be excluded from consideration with the
+#'  `input_na_handling` arg. Defaults to "tag"ging these results in a new
+#'  column called `.incomplete_window`. If "remove", results computed on
+#'  incomplete windows are dropped, potentially resulting in the
+#'  `epi_slide`'s output containing fewer unique epikeys or, for a
+#'  computation returning a single row per group, fewer rows than the input
+#'  data. If "keep", results computed on incomplete windows are returned
+#'  as-is and unmarked. Setting this to "keep" makes it very easy to write an
+#'  erroneous 7-day average or 7-day sum. For example, if we `slide` the
+#'  natural sum over ungrouped data with `m` epikey combinations, we get the
+#'  sum of less than `n * m` things for the first `n - 1` time_values and
+#'  wherever there's a gap in availability (e.g. a missing geo for one or
+#'  more dates).
+#' @param window_completeness Which completion procedure should by used on
+#'  input data to fill date gaps or determine window completeness? Defaults
+#'  to "epigroup_extents"; each epigroup will be completed for the full range
+#'  of dates between its own min and max dates only, such that date gaps are
+#'  filled in. If "overall_extents", each epigroup will be completed for the
+#'  full range of dates between the min and max dates seen in the dataset.
+#'  Thus, each window that the computation is applied to is guaranteed to
+#'  have `before + after + 1` (`n`) observations per epikey combination.
+#'  If "computationgroup_extents", each epigroup will be completed for the
+#'  full range of dates between the min and max dates seen in the computation
+#'  group (determined by the grouping structure of the input data) it is
+#'  included in.
+#' @param prefill Should input data rows added during completion procedure be
+#'  passed to user computation? Defaults to `FALSE`; completed rows are not
+#'  passed to user computation. If `TRUE`, completed rows are passed to user
+#'  computation.
+#' @param input_na_as_complete Should `NA`s that exist in the input data be
+#'  excluded from consideration when determining which window data is
+#'  complete? Default is `FALSE`; pre-existing `NA` values (those not
+#'  introduced by window completion) will cause windows to be considered
+#'  incomplete. If `TRUE`, pre-existing `NA` values will be considered as
+#'  real values, and only those introduced by window completion will cause
+#'  windows to be considered incomplete.
 #' @return An `epi_df` object given by appending a new column to `x`, named
-#'   according to the `new_col_name` argument.
+#'  according to the `new_col_name` argument. Depending on the
+#'  `incomplete_results` setting, a new column `.incomplete` will be appended
+#'  to indicate whether a given result was calculated on an incomplete window
+#'  or not.
 #'
 #' @details To "slide" means to apply a function or formula over a rolling
 #'   window of time steps for each data group, where the window is entered at a
@@ -123,7 +165,9 @@
 #'
 #' @importFrom lubridate days weeks
 #' @importFrom dplyr bind_rows group_vars filter select
-#' @importFrom rlang .data .env !! enquo enquos sym env missing_arg
+#' @importFrom rlang .data .env !! enquo enquos sym env missing_arg arg_match
+#' @importFrom tidyr complete nesting expand
+#' @importFrom checkmate assert_list assert_logical
 #' @export
 #' @examples
 #' # slide a 7-day trailing average formula on cases
@@ -167,7 +211,12 @@
 epi_slide <- function(x, f, ..., before, after, ref_time_values,
                       time_step,
                       new_col_name = "slide_value", as_list_col = FALSE,
-                      names_sep = "_", all_rows = FALSE) {
+                      names_sep = "_", all_rows = FALSE,
+                      incomplete_results = c("tag", "remove", "keep"),
+                      window_completeness = c("epigroup_extents", "overall_extents", "computationgroup_extents"),
+                      prefill = FALSE,
+                      input_na_as_complete = FALSE
+                      ) {
   assert_class(x, "epi_df")
 
   if (missing(ref_time_values)) {
@@ -213,6 +262,12 @@ epi_slide <- function(x, f, ..., before, after, ref_time_values,
     }
     after <- 0L
   }
+
+  # If arg not provided by user, first value in list is used.
+  incomplete_results <- arg_match(incomplete_results)
+  window_completeness <- arg_match(window_completeness)
+  assert_logical(prefill, any.missing = FALSE)
+  assert_logical(input_na_as_complete, any.missing = FALSE)
 
   # If a custom time step is specified, then redefine units
   if (!missing(time_step)) {

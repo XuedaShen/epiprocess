@@ -15,7 +15,12 @@ epi_slide(
   new_col_name = "slide_value",
   as_list_col = FALSE,
   names_sep = "_",
-  all_rows = FALSE
+  all_rows = FALSE,
+  incomplete_results = c("tag", "remove", "keep"),
+  window_completeness = c("epigroup_extents", "overall_extents",
+    "computationgroup_extents"),
+  prefill = FALSE,
+  input_na_as_complete = FALSE
 )
 }
 \arguments{
@@ -96,10 +101,56 @@ of the slide computation output. If using \code{as_list_col = TRUE}, note that
 the missing marker is a \code{NULL} entry in the list column; for certain
 operations, you might want to replace these \code{NULL} entries with a different
 \code{NA} marker.}
+
+\item{incomplete_results}{How should computation results calculated on
+incomplete windows be handled? Incomplete windows are defined as those
+where any values are explicitly missing (have a value of \code{NA}); \code{NA}s
+that exist in the input data can be excluded from consideration with the
+\code{input_na_handling} arg. Defaults to "tag"ging these results in a new
+column called \code{.incomplete_window}. If "remove", results computed on
+incomplete windows are dropped, potentially resulting in the
+\code{epi_slide}'s output containing fewer unique epikeys or, for a
+computation returning a single row per group, fewer rows than the input
+data. If "keep", results computed on incomplete windows are returned
+as-is and unmarked. Setting this to "keep" makes it very easy to write an
+erroneous 7-day average or 7-day sum. For example, if we \code{slide} the
+natural sum over ungrouped data with \code{m} epikey combinations, we get the
+sum of less than \code{n * m} things for the first \code{n - 1} time_values and
+wherever there's a gap in availability (e.g. a missing geo for one or
+more dates).}
+
+\item{window_completeness}{Which completion procedure should by used on
+input data to fill date gaps or determine window completeness? Defaults
+to "epigroup_extents"; each epigroup will be completed for the full range
+of dates between its own min and max dates only, such that date gaps are
+filled in. If "overall_extents", each epigroup will be completed for the
+full range of dates between the min and max dates seen in the dataset.
+Thus, each window that the computation is applied to is guaranteed to
+have \code{before + after + 1} (\code{n}) observations per epikey combination.
+If "computationgroup_extents", each epigroup will be completed for the
+full range of dates between the min and max dates seen in the computation
+group (determined by the grouping structure of the input data) it is
+included in.}
+
+\item{prefill}{Should input data rows added during completion procedure be
+passed to user computation? Defaults to \code{FALSE}; completed rows are not
+passed to user computation. If \code{TRUE}, completed rows are passed to user
+computation.}
+
+\item{input_na_as_complete}{Should \code{NA}s that exist in the input data be
+excluded from consideration when determining which window data is
+complete? Default is \code{FALSE}; pre-existing \code{NA} values (those not
+introduced by window completion) will cause windows to be considered
+incomplete. If \code{TRUE}, pre-existing \code{NA} values will be considered as
+real values, and only those introduced by window completion will cause
+windows to be considered incomplete.}
 }
 \value{
 An \code{epi_df} object given by appending a new column to \code{x}, named
-according to the \code{new_col_name} argument.
+according to the \code{new_col_name} argument. Depending on the
+\code{incomplete_results} setting, a new column \code{.incomplete} will be appended
+to indicate whether a given result was calculated on an incomplete window
+or not.
 }
 \description{
 Slides a given function over variables in an \code{epi_df} object. See the \href{https://cmu-delphi.github.io/epiprocess/articles/slide.html}{slide vignette} for
