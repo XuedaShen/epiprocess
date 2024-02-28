@@ -269,6 +269,25 @@ epi_slide <- function(x, f, ..., before, after, ref_time_values,
   assert_logical(prefill, any.missing = FALSE)
   assert_logical(input_na_as_complete, any.missing = FALSE)
 
+  if (!prefill && incomplete_results == "keep") {
+    # TODO
+    cli_warn(...)
+  }
+
+  # Do window completion in all cases other than silently returning all results.
+  group_report_dates <- list()
+  if (incomplete_results != "keep") {
+    # TODO
+    if (window_completeness == "overall_extents") {
+      # Simple case. Fill everything to global min/max + padding.
+    } else if (window_completeness == "computationgroup_extents") {
+      # Fill everything to computation group min/max + padding.
+    } else if (window_completeness == "epigroup_extents") {
+      # Fill each epigroup individually + add local padding (just before/after points). Needs to be done in `slide_one_grp` so we can find min/max dates by epigroup? Make list per epigroup of first/last date reported.
+      group_report_dates <- list() # Not sure we can do here
+    }
+  }
+
   # If a custom time step is specified, then redefine units
   if (!missing(time_step)) {
     before <- time_step(before)
@@ -304,7 +323,39 @@ epi_slide <- function(x, f, ..., before, after, ref_time_values,
     stops <- stops[o]
     kept_ref_time_values <- ref_time_values[o]
 
-    f <- f_factory(kept_ref_time_values)
+    group_report_dates <- list()
+    if (incomplete_results != "keep") {
+      if (window_completeness == "epigroup_extents") {
+        # TODO
+        # Make list per epigroup of first/last date reported?
+        group_report_dates <- list() # Maybe can be done above
+      }
+
+      # Compute window completeness
+      complete_windows_list <- slider::hop_index(
+        .x = .data_group,
+        .i = .data_group$time_value,
+        .starts = starts,
+        .stops = stops,
+        .f = function(...) {},
+        .group_key, ...
+      )
+    }
+
+    f <- f_factory(kept_ref_time_values, group_report_dates)
+
+    # Remove phony observations.
+    if (!prefill) {
+      # TODO
+      if (incomplete_results != "keep") {
+        # `complete_windows_list` needs to be the same length as .x to be
+        # joined on later.
+        complete_windows_list <- complete_windows_list[.x$.real, ]
+      }
+
+      .x <- .x[.x$.real, ]
+      .x$.real <- NULL
+    }
 
     # Compute the slide values
     slide_values_list <- slider::hop_index(
@@ -329,6 +380,12 @@ epi_slide <- function(x, f, ..., before, after, ref_time_values,
     if (!all(purrr::map_lgl(slide_values_list, is.atomic)) &&
       !all(purrr::map_lgl(slide_values_list, is.data.frame))) {
       cli_abort("The slide computations must return always atomic vectors or data frames (and not a mix of these two structures).")
+    }
+
+    # Join on column marking whether windows were complete or not.
+    if (incomplete_results != "keep") {
+      # TODO
+      .x$.incomplete <- complete_windows_list
     }
 
     # Unlist if appropriate:
@@ -390,10 +447,18 @@ epi_slide <- function(x, f, ..., before, after, ref_time_values,
   # Create a wrapper that calculates and passes `.ref_time_value` to the
   # computation. `i` is contained in the `f_wrapper_factory` environment such
   # that when called within `slide_one_grp` `i` is reset for every group.
-  f_wrapper_factory <- function(kept_ref_time_values) {
+  f_wrapper_factory <- function(kept_ref_time_values, group_report_dates) {
     # Use `i` to advance through list of start dates.
     i <- 1L
     f_wrapper <- function(.x, .group_key, ...) {
+      if (incomplete_results != "keep" && window_completeness == "epigroup_extents") {
+          # TODO
+          # Drop pad dates from .x if first/last epigroup reported values
+          # aren't included in window yet. This handling is restricted to
+          # `before` + `after` obs per epigroup.
+        }
+      }
+
       .ref_time_value <- kept_ref_time_values[[i]]
       i <<- i + 1L
       f(.x, .group_key, .ref_time_value, ...)
@@ -414,6 +479,18 @@ epi_slide <- function(x, f, ..., before, after, ref_time_values,
   # Unnest if we need to, and return
   if (!as_list_col) {
     x <- unnest(x, !!new_col, names_sep = names_sep)
+  }
+
+  # Remove any remaining phony observations.
+  if (".real" %in% colnames(.x)) {
+    .x <- .x[.x$.real, ]
+    .x$.real <- NULL
+  }
+
+  if (incomplete_results == "remove") {
+    # TODO
+    .x <- .x[.x$.incomplete, ]
+    .x$.incomplete <- NULL
   }
 
   return(x)
