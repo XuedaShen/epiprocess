@@ -270,8 +270,17 @@ epi_slide <- function(x, f, ..., before, after, ref_time_values,
   assert_logical(input_na_as_complete, any.missing = FALSE)
 
   if (!prefill && incomplete_results == "keep") {
-    # TODO
-    cli_warn(...)
+    cli_warn(
+      c(
+        "Not completing windows via `prefill` and not marking incomplete
+         results via `incomplete_results` makes it very easy to write an
+         erroneous 7-day average or 7-day sum that uses less than the
+         expected `n` observations per window.",
+         "i" = "It is recommended to at least mark incomplete results by setting `incomplete_results = \"tag\"`",
+         "i" = "Also consider completing windows via `prefill`"
+      ),
+      class = "epiprocess__epi_slide__autocomplete_off" )
+    }
   }
 
   # Do window completion in all cases other than silently returning all results.
