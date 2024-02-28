@@ -287,14 +287,33 @@ epi_slide <- function(x, f, ..., before, after, ref_time_values,
   group_report_dates <- list()
   if (incomplete_results != "keep") {
     # TODO
+    # Fill the `.real` column with `FALSE` for rows added during completion.
+    fill <- list(.real = FALSE)
+
     if (window_completeness == "overall_extents") {
       # Simple case. Fill everything to global min/max + padding.
+      # Add helper column marking real observations.
+      x$.real <- TRUE
+
+      # Add in rows for each present key column combination for all dates.
+      #  - This happens within each group if the data is grouped. This
+      #    doesn't change the impact of completion because we apply the
+      #    computation by group as well.
+      #  - If a geo first appears or ends halfway through the dataset, it will be
+      #    completed all the way through to the beginning/end of the data.
+      x <- tidyr::complete(x,
+          expand(x, nesting(!!key_cols_no_time), data.frame(time_value = all_dates)),
+          fill = fill
+        )
     } else if (window_completeness == "computationgroup_extents") {
       # Fill everything to computation group min/max + padding.
     } else if (window_completeness == "epigroup_extents") {
       # Fill each epigroup individually + add local padding (just before/after points). Needs to be done in `slide_one_grp` so we can find min/max dates by epigroup? Make list per epigroup of first/last date reported.
       group_report_dates <- list() # Not sure we can do here
     }
+
+    # `complete` strips epi_df format and metadata. Restore them.
+    x <- reclass(x, attributes(x)$metadata)
   }
 
   # If a custom time step is specified, then redefine units
