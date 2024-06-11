@@ -30,6 +30,7 @@ Imports:
     cli,
     data.table,
     dplyr (>= 1.0.0),
+    epidatasets,
     fabletools,
     feasts,
     generics,
@@ -56,9 +57,12 @@ Suggests:
     rmarkdown,
     testthat (>= 3.1.5),
     withr
+Enhances:
+    epidatasets
 VignetteBuilder:
     knitr
 Remotes:
+    cmu-delphi/epidatasets,
     cmu-delphi/epidatr,
     reconverse/outbreaks,
     glmgen/genlasso
