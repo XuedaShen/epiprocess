@@ -4,6 +4,11 @@ Pre-1.0.0 numbering scheme: 0.x will indicate releases, while 0.x.y will indicat
 
 # epiprocess 0.8
 
+## Breaking changes
+- `detect_outlr_stl(seasonal_period = NULL)` is no longer accepted. Use
+  `detect_outlr_stl(seasonal_period = <value>, seasonal_as_residual = TRUE)`
+  instead.  See `?detect_outlr_stl` for more details.
+
 ## Improvements
 
 - `epi_slide` computations are now 2-4 times faster after changing how
@@ -33,6 +38,9 @@ Pre-1.0.0 numbering scheme: 0.x will indicate releases, while 0.x.y will indicat
 - Clarified "Get started" example of getting Ebola line list data into `epi_df`
   format.
 - Improved documentation web site landing page's introduction.
+
+## Cleanup
+- Removed some external package dependencies.
 
 # epiprocess 0.7.0
 
